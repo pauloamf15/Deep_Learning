@@ -17,7 +17,6 @@ def configure_seed(seed):
     random.seed(seed)
     np.random.seed(seed)
 
-
 class LinearModel(object):
     def __init__(self, n_classes, n_features, **kwargs):
         self.W = np.zeros((n_classes, n_features))
@@ -47,14 +46,24 @@ class LinearModel(object):
 
 
 class Perceptron(LinearModel):
-    def update_weight(self, x_i, y_i, **kwargs):
+    def update_weight(self, x_i, y_i, learning_rate=0.00001, **kwargs):
         """
         x_i (n_features): a single training example
         y_i (scalar): the gold label for that example
         other arguments are ignored
         """
         # Q1.1a
-        raise NotImplementedError
+        # Added from practical 1
+        # I added learning rate, maybe not necessary?
+        # raise NotImplementedError
+        # Sign function.
+        
+        y_hat=self.predict(x_i)
+        if y_hat != y_i:
+            self.W[y_i, :] += learning_rate* x_i
+            self.W[y_hat, :] -=   learning_rate*x_i
+        
+
 
 
 class LogisticRegression(LinearModel):
