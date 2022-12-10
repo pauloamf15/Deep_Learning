@@ -46,27 +46,28 @@ class LinearModel(object):
 
 
 class Perceptron(LinearModel):
-    def update_weight(self, x_i, y_i, learning_rate=0.00001, **kwargs):
+    def update_weight(self, x_i, y_i, **kwargs):
         """
         x_i (n_features): a single training example
         y_i (scalar): the gold label for that example
         other arguments are ignored
         """
         # Q1.1a
-        # Added from practical 1
-        # I added learning rate, maybe not necessary?
-        # raise NotImplementedError
-        # Sign function.
-        
+
+        # Is learning rate necessary?
+        # Results not very good
+
         y_hat=self.predict(x_i)
         if y_hat != y_i:
-            self.W[y_i, :] += learning_rate* x_i
-            self.W[y_hat, :] -=   learning_rate*x_i
+            self.W[y_i, :] +=  x_i
+            self.W[y_hat, :] -=   x_i
         
 
 
 
 class LogisticRegression(LinearModel):
+
+    
     def update_weight(self, x_i, y_i, learning_rate=0.001):
         """
         x_i (n_features): a single training example
@@ -74,7 +75,24 @@ class LogisticRegression(LinearModel):
         learning_rate (float): keep it at the default value for your plots
         """
         # Q1.1b
-        raise NotImplementedError
+
+        # Better results
+
+        # Defining the probabilities for each class
+        exps=np.exp(np.dot(self.W, x_i))
+        Z=np.sum(exps)
+        probs=exps/Z
+        
+        # Creating e_y
+        ey=np.zeros_like(probs)
+        ey[y_i]=1
+        
+        # Creating grad_L
+        grad_L=np.einsum('i,j->ij',probs-ey,x_i) # same as above
+        
+        # Updating weights stochastically
+        self.W -= learning_rate*grad_L
+
 
 
 class MLP(object):
