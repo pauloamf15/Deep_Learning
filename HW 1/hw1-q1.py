@@ -54,13 +54,13 @@ class Perceptron(LinearModel):
         """
         # Q1.1a
 
-        # Is learning rate necessary? Doesn't make a big difference
+        # Is learning rate necessary?
         # Results not very good
 
         y_hat=self.predict(x_i)
         if y_hat != y_i:
             self.W[y_i, :] +=  x_i
-            self.W[y_hat, :] -=  x_i
+            self.W[y_hat, :] -=   x_i
         
 
 
@@ -88,7 +88,7 @@ class LogisticRegression(LinearModel):
         ey[y_i]=1
         
         # Creating grad_L
-        grad_L=np.einsum('i,j->ij',probs-ey,x_i) 
+        grad_L=np.einsum('i,j->ij',probs-ey,x_i) # same as above
         
         # Updating weights stochastically
         self.W -= learning_rate*grad_L
