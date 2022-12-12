@@ -17,6 +17,7 @@ def configure_seed(seed):
     random.seed(seed)
     np.random.seed(seed)
 
+
 class LinearModel(object):
     def __init__(self, n_classes, n_features, **kwargs):
         self.W = np.zeros((n_classes, n_features))
@@ -53,21 +54,10 @@ class Perceptron(LinearModel):
         other arguments are ignored
         """
         # Q1.1a
-
-        # Is learning rate necessary?
-        # Results not very good
-
-        y_hat=self.predict(x_i)
-        if y_hat != y_i:
-            self.W[y_i, :] +=  x_i
-            self.W[y_hat, :] -=   x_i
-        
-
+        raise NotImplementedError
 
 
 class LogisticRegression(LinearModel):
-
-    
     def update_weight(self, x_i, y_i, learning_rate=0.001):
         """
         x_i (n_features): a single training example
@@ -75,48 +65,22 @@ class LogisticRegression(LinearModel):
         learning_rate (float): keep it at the default value for your plots
         """
         # Q1.1b
-
-        # Better results
-
-        # Defining the probabilities for each class
-        exps=np.exp(np.dot(self.W, x_i))
-        Z=np.sum(exps)
-        probs=exps/Z
-        
-        # Creating e_y
-        ey=np.zeros_like(probs)
-        ey[y_i]=1
-        
-        # Creating grad_L
-        grad_L=np.einsum('i,j->ij',probs-ey,x_i) # same as above
-        
-        # Updating weights stochastically
-        self.W -= learning_rate*grad_L
-
+        raise NotImplementedError
 
 
 class MLP(object):
     # Q3.2b. This MLP skeleton code allows the MLP to be used in place of the
     # linear models with no changes to the training loop or evaluation code
     # in main().
-    def __init__(self, n_classes, n_features, hidden_size,layers):
+    def __init__(self, n_classes, n_features, hidden_size):
         # Initialize an MLP with a single hidden layer.
-        self.w=[np.random.normal(0.1,0.1,[hidden_size,n_features]),np.random.normal(0.1,0.1,[n_classes,hidden_size])]  # still need to initialize values
-        self.b=[np.random.normal(0.1,0.1,hidden_size),np.random.normal(0.1,0.1,n_classes)]
-        self.z=[np.random.normal(0.1,0.1,n_features),np.random.normal(0.1,0.1,hidden_size),np.random.normal(0.1,0.1,n_classes)]
-        self.gradz=[np.random.normal(0.1,0.1,n_features),np.random.normal(0.1,0.1,hidden_size),np.random.normal(0.1,0.1,n_classes)]
+        raise NotImplementedError
 
     def predict(self, X):
         # Compute the forward pass of the network. At prediction time, there is
         # no need to save the values of hidden nodes, whereas this is required
         # at training time.
-        self.z[0]=X
-        for j in range(1,len(self.z)):
-            a=(self.w[j-1]).dot(self.z[j-1].T)+np.einsum('i,j->ij',self.b[j-1],np.ones(self.z[j-1].shape[0]))
-            self.z[j]=np.where(a>0,a,0)
-        self.z[-1]=np.exp(self.z[-1])/np.sum(np.exp(self.z[-1]))
-        return self.z[-1]
-
+        raise NotImplementedError
 
     def evaluate(self, X, y):
         """
@@ -130,25 +94,7 @@ class MLP(object):
         return n_correct / n_possible
 
     def train_epoch(self, X, y, learning_rate=0.001):
-        n=int(np.random.rand()*y.shape[0])
-        x=X[n]
-        Y=y[n]
-        self.z[0]=x
-        for j in range(1,len(self.z)):
-            a=(self.w[j-1]).dot(self.z[j-1])+self.b[j-1]
-            self.z[j]=np.where(a>0,a,0)
-        self.z[-1]=np.exp(self.z[-1])/np.sum(np.exp(self.z[-1]))
-        e=np.zeros((self.z[-1]).shape[0])
-        e[Y]=1
-        self.gradz[-1]=self.z[-1]-e
-        for k in range(len(self.z)-1,0,-1):
-            gradw=np.outer(self.gradz[k],self.z[k-1])
-            gradb=self.gradz[k]
-            gradh=np.dot(self.w[k-1].T,self.gradz[k])
-            self.gradz[k-1]=np.where(self.z[k-1]<=0,0,gradh)
-            self.w[k-1]-=learning_rate*gradw
-            self.b[k-1]-=learning_rate*gradb
-            
+        raise NotImplementedError
 
 
 def plot(epochs, valid_accs, test_accs):
@@ -190,7 +136,6 @@ def main():
 
     n_classes = np.unique(train_y).size  # 10
     n_feats = train_X.shape[1]
-    
 
     # initialize the model
     if opt.model == 'perceptron':
