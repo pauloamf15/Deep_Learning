@@ -17,6 +17,12 @@ def configure_seed(seed):
     random.seed(seed)
     np.random.seed(seed)
 
+def ReLU(x):
+    return x * (x > 0)
+
+def dReLU(x, grad_x):
+    return grad_x * (x > 0)
+
 class LinearModel(object):
     def __init__(self, n_classes, n_features, **kwargs):
         self.W = np.zeros((n_classes, n_features))
@@ -25,7 +31,6 @@ class LinearModel(object):
         raise NotImplementedError
 
     def train_epoch(self, X, y, **kwargs):
-        print(X[:][-1])
         for x_i, y_i in zip(X, y):
             self.update_weight(x_i, y_i, **kwargs)
 
@@ -56,10 +61,9 @@ class Perceptron(LinearModel):
         # Q1.1a
 
         # Is learning rate necessary? Does not make big diff
+        # Bias was already added to inputs -> See loading of data
         # Results not very good
-        # print(x_i)
-        # self.W=np.concatenate([ np.zeros((self.W.shape[0],1)), self.W], axis=1)
-        # x_i=np.concatenate([ [1], x_i])
+        
         y_hat=self.predict(x_i)
         if y_hat != y_i:
             self.W[y_i, :] +=  x_i
@@ -102,13 +106,26 @@ class MLP(object):
     # Q3.2b. This MLP skeleton code allows the MLP to be used in place of the
     # linear models with no changes to the training loop or evaluation code
     # in main().
-    def __init__(self, n_classes, n_features, hidden_size,layers):
+    def __init__(self, n_classes, n_features, hidden_size,layers=1):
         # Initialize an MLP with a single hidden layer.
-        self.w=[np.random.normal(0.1,0.1,[hidden_size,n_features]),np.random.normal(0.1,0.1,[n_classes,hidden_size])]  # still need to initialize values
-        self.b=[np.zeros(hidden_size),np.zeros(n_classes)] #check later
-        self.z=[np.zeros(n_features), np.zeros(hidden_size),np.zeros(n_classes)] #check later
-        self.gradz=[np.zeros(n_features), np.zeros(hidden_size),np.zeros(n_classes)] #check later
 
+        # Initialize weights matrices
+        w1 = np.random.normal(0.1,0.1,[hidden_size,n_features])
+        w2 = np.random.normal(0.1,0.1,[n_classes,hidden_size])
+        self.w=[w1,w2]  # still need to initialize values
+        
+        # Initialize biases vectors
+        b1 = np.zeros(hidden_size)
+        b2 = np.zeros(n_classes)
+        self.b=[b1,b2] #check later
+
+        # Initializing zs and grad_zs ( necessary? )
+        self.z=[np.zeros(n_features), np.zeros(hidden_size),np.zeros(n_classes)] #check later
+        # self.gradz = self.z
+        #self.gradz=[np.zeros(n_features), np.zeros(hidden_size),np.zeros(n_classes)] #check later
+
+    
+    
     def predict(self, X):
         # Compute the forward pass of the network. At prediction time, there is
         # no need to save the values of hidden nodes, whereas this is required
@@ -153,24 +170,48 @@ class MLP(object):
 
     def train_epoch(self, X, y, learning_rate=0.001):
         # n=int(np.random.rand()*y.shape[0])
-        for x_i,y_i in zip(X,y):
-            self.z[0] = x_i
-            for j in range(1,len(self.z)):
-                lin = (self.w[j-1]).dot(self.z[j-1]) + self.b[j-1] # Linear part
-                self.z[j] = np.where(lin>0,lin,0) # RELU
-            print(np.exp(self.z[-1]))
-            self.z[-1] = np.exp(self.z[-1])/np.sum(np.exp(self.z[-1]))
+        from sklearn.model_selection import train_test_split
+
+        X_train, _, y_train, _ = train_test_split(X, y, test_size=1, random_state=33)
+        num_layers=len(self.w)
+        for x_i,y_i in zip(X_train,y_train):
             
-            e = np.zeros((self.z[-1]).shape[0])
-            e[y_i] = 1
-            self.gradz[-1] = self.z[-1] - e
-            for k in range(len(self.z)-1,0,-1):
-                gradw = np.outer(self.gradz[k],self.z[k-1])
-                gradb = self.gradz[k]
-                gradh = np.dot(self.w[k-1].T,self.gradz[k])
-                self.gradz[k-1] = np.where(self.z[k-1]<=0,0,gradh)
-                self.w[k-1] -= learning_rate*gradw
-                self.b[k-1] -= learning_rate*gradb
+            # Forward
+            self.z[0] = x_i
+            # self.z[0] = x_i
+            for j in range(num_layers):
+                lin = (self.w[j]).dot(self.z[j]) + self.b[j]    # Linear part
+                if j < num_layers - 1: self.z[j+1] = ReLU(lin)  # ReLU activation
+                else: self.z[j+1] = lin
+                # self.z[j] = np.where(lin>0,lin,0) # RELU
+
+            # Backward
+            # Softmax transformation
+            probs = np.exp(self.z[-1])/np.sum(np.exp(self.z[-1]))
+            # print(probs)
+            ey = np.zeros_like(probs)
+            ey[y_i] = 1 # One hot
+            # self.gradz[-1] = probs - ey # Grad of loss wrt last z
+            grad_z = probs - ey # Grad of loss wrt last z
+            for k in range(num_layers - 1, -1, -1):
+                gradw = np.outer(grad_z,self.z[k])
+                # gradw = np.outer(self.gradz[k],self.z[k-1])
+                gradb = grad_z
+                # gradb = self.gradz[k]
+                
+                # Gradient of hidden layer below
+                gradh = np.dot(self.w[k].T,grad_z)
+                # gradh = np.dot(self.w[k-1].T,self.gradz[k])
+                # print(self.z[k].shape,gradh.shape)
+                # Gradient of hidden layer below before activation
+                if j < num_layers - 1: grad_z = dReLU(self.z[k],gradh)
+                else: grad_z = dReLU(self.z[k],1)
+                # self.gradz[k-1] = dReLU(self.z[k-1],gradh)
+                #self.gradz[k-1] = np.where(self.z[k-1]<=0,0,gradh)
+                
+                #Update parameters
+                self.w[k] -= learning_rate*gradw
+                self.b[k] -= learning_rate*gradb
             
 
 
