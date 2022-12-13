@@ -198,8 +198,8 @@ class MLP(object):
                 # Gradient of hidden layer below
                 gradh = np.dot(self.w[k].T,grad_z)
                 # Gradient of hidden layer below before activation
-                if k > 1: grad_z = dReLU(self.z[k],gradh)
-                else: grad_z = gradh    #self.z[k]#dReLU(self.z[k],1)
+                grad_z = dReLU(self.z[k],gradh)
+                #else: grad_z = gradh    #self.z[k] #dReLU(self.z[k],1)
 
             gradw.reverse()
             gradb.reverse()
