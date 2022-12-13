@@ -119,10 +119,8 @@ class MLP(object):
         b2 = np.zeros(n_classes)
         self.b=[b1,b2] #check later
 
-        # Initializing zs and grad_zs ( necessary? )
+        # Initializing zs ( necessary? )
         self.z=[np.zeros(n_features), np.zeros(hidden_size),np.zeros(n_classes)] #check later
-        # self.gradz = self.z
-        #self.gradz=[np.zeros(n_features), np.zeros(hidden_size),np.zeros(n_classes)] #check later
 
     
     
@@ -171,19 +169,17 @@ class MLP(object):
     def train_epoch(self, X, y, learning_rate=0.001):
         # n=int(np.random.rand()*y.shape[0])
         from sklearn.model_selection import train_test_split
-
-        X_train, _, y_train, _ = train_test_split(X, y, test_size=1, random_state=33)
+        #X_new = (X-np.mean(X))/np.std(X)
+        X_train, _, y_train, _ = train_test_split(X, y, test_size=0.000001, random_state=33)
         num_layers=len(self.w)
         for x_i,y_i in zip(X_train,y_train):
-            
+            x_i = (x_i-np.mean(x_i))/np.std(x_i)
             # Forward
             self.z[0] = x_i
-            # self.z[0] = x_i
             for j in range(num_layers):
                 lin = (self.w[j]).dot(self.z[j]) + self.b[j]    # Linear part
                 if j < num_layers - 1: self.z[j+1] = ReLU(lin)  # ReLU activation
-                else: self.z[j+1] = lin
-                # self.z[j] = np.where(lin>0,lin,0) # RELU
+                else: self.z[j+1] = lin # Because we assume output has no activation
 
             # Backward
             # Softmax transformation
@@ -191,27 +187,27 @@ class MLP(object):
             # print(probs)
             ey = np.zeros_like(probs)
             ey[y_i] = 1 # One hot
-            # self.gradz[-1] = probs - ey # Grad of loss wrt last z
+            
             grad_z = probs - ey # Grad of loss wrt last z
+            gradw = []
+            gradb = []
             for k in range(num_layers - 1, -1, -1):
-                gradw = np.outer(grad_z,self.z[k])
-                # gradw = np.outer(self.gradz[k],self.z[k-1])
-                gradb = grad_z
-                # gradb = self.gradz[k]
+                gradw.append(np.outer(grad_z,self.z[k]))
+                gradb.append(grad_z)
                 
                 # Gradient of hidden layer below
                 gradh = np.dot(self.w[k].T,grad_z)
-                # gradh = np.dot(self.w[k-1].T,self.gradz[k])
-                # print(self.z[k].shape,gradh.shape)
                 # Gradient of hidden layer below before activation
-                if j < num_layers - 1: grad_z = dReLU(self.z[k],gradh)
-                else: grad_z = dReLU(self.z[k],1)
-                # self.gradz[k-1] = dReLU(self.z[k-1],gradh)
-                #self.gradz[k-1] = np.where(self.z[k-1]<=0,0,gradh)
-                
-                #Update parameters
-                self.w[k] -= learning_rate*gradw
-                self.b[k] -= learning_rate*gradb
+                if k > 1: grad_z = dReLU(self.z[k],gradh)
+                else: grad_z = gradh    #self.z[k]#dReLU(self.z[k],1)
+
+            gradw.reverse()
+            gradb.reverse()
+            
+            #Update parameters
+            for m in range(num_layers):
+                self.w[m] -= learning_rate*gradw[m]
+                self.b[m] -= learning_rate*gradb[m]
             
 
 
