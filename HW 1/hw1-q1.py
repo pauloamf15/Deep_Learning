@@ -120,8 +120,7 @@ class MLP(object):
         self.b=[b1,b2] #check later
 
         # Initializing zs ( necessary? )
-        self.z=[np.zeros(n_features), np.zeros(hidden_size),np.zeros(n_classes)] #check later
-
+        self.h=[np.zeros(n_features), np.zeros(hidden_size),np.zeros(n_classes)] #check later
     
     
     def predict(self, X):
@@ -129,28 +128,17 @@ class MLP(object):
         # no need to save the values of hidden nodes, whereas this is required
         # at training time.
         pred_tot=np.zeros(X.shape[0])
+        num_layers=len(self.w)
         for n in np.arange(X.shape[0]):
             x_i=X[n]
-            self.z[0] = x_i
-            for j in range(1,len(self.z)):
-                # print(self.w[j-1].shape)
-                # print(self.z[j-1].T.shape)
-                # a=self.w[j-1].dot(self.z[j-1].T)
-                # b=np.einsum('i,j->ij', self.b[j-1],np.ones(self.z[j-1].shape[0]))
-                # a=a.T
-                # b=b.T
-                # print(a.shape)
-                # print(b.shape)
-                # lin=a+b
-                # lin = (self.w[j-1]).dot(self.z[j-1].T) + np.einsum('i,j->ij', self.b[j-1],np.ones(self.z[j-1].shape[0])) # Linear part of a layer
-                # print(self.z[j].shape, lin.shape)
-                # self.z[j] = np.where(lin>0,lin,0) # RELU of linear part
-                # print(self.z[j].shape,lin.shape)
-                # self.z[-1]=np.exp(self.z[-1])/np.sum(np.exp(self.z[-1]))
-                lin=(self.w[j-1]).dot(self.z[j-1])+self.b[j-1] # Linear part
-                self.z[j]=np.where(lin>0,lin,0) # RELU
-            self.z[-1]=np.exp(self.z[-1])/np.sum(np.exp(self.z[-1]))
-            pred = np.argmax(self.z[-1])
+            x_i = (x_i-np.mean(x_i))/np.std(x_i)
+            self.h[0] = x_i
+            for j in range(num_layers):
+                lin = (self.w[j]).dot(self.h[j]) + self.b[j]    # Linear part
+                if j < num_layers - 1: self.h[j+1] = ReLU(lin)  # ReLU activation
+                else: self.h[j+1] = lin
+            self.h[-1]=np.exp(self.h[-1])/np.sum(np.exp(self.h[-1]))
+            pred = np.argmax(self.h[-1])
             pred_tot[n]=pred
         return pred_tot
 
@@ -167,50 +155,44 @@ class MLP(object):
         return n_correct / n_possible
 
     def train_epoch(self, X, y, learning_rate=0.001):
-        # n=int(np.random.rand()*y.shape[0])
-        from sklearn.model_selection import train_test_split
-        #X_new = (X-np.mean(X))/np.std(X)
-        X_train, _, y_train, _ = train_test_split(X, y, test_size=0.000001, random_state=33)
+     
+     #from sklearn.model_selection import train_test_split
+     #X_new = (X-np.mean(X))/np.std(X)
+     #X_train, _, y_train, _ = train_test_split(X, y, test_size=0.000001, random_state=33)
+    
         num_layers=len(self.w)
-        for x_i,y_i in zip(X_train,y_train):
+        for x_i,y_i in zip(X,y):
             x_i = (x_i-np.mean(x_i))/np.std(x_i)
             # Forward
-            self.z[0] = x_i
+            self.h[0] = x_i
+            z=[]
+            z.append(x_i)
             for j in range(num_layers):
-                lin = (self.w[j]).dot(self.z[j]) + self.b[j]    # Linear part
-                if j < num_layers - 1: self.z[j+1] = ReLU(lin)  # ReLU activation
-                else: self.z[j+1] = lin # Because we assume output has no activation
-
-            # Backward
-            # Softmax transformation
-            probs = np.exp(self.z[-1])/np.sum(np.exp(self.z[-1]))
-            # print(probs)
-            ey = np.zeros_like(probs)
-            ey[y_i] = 1 # One hot
-            
-            grad_z = probs - ey # Grad of loss wrt last z
-            gradw = []
-            gradb = []
-            for k in range(num_layers - 1, -1, -1):
-                gradw.append(np.outer(grad_z,self.z[k]))
-                gradb.append(grad_z)
+                lin = (self.w[j]).dot(self.h[j]) + self.b[j]    # Linear part
+                z.append(lin)
+                if j < num_layers - 1: self.h[j+1] = ReLU(lin)  # ReLU activation
+                else: self.h[j+1] = np.exp(lin)/np.sum(np.exp(lin)) # output activation(softmax)
                 
+            
+            ey = np.zeros_like(self.h[-1])
+            ey[y_i] = 1 # One hot
+            grad_z=self.h[-1]-ey
+            #grad_z=probs-ey
+            for k in range(len(self.h)-1, 0, -1):
+                gradw = np.outer(grad_z,self.h[k-1])
+
+                gradb = grad_z[:]  #python is sometimes a moron and takes a=b as b=a, as in afterwards changing b changes a and vice versa, the [:] makes sure this doesnt happen.
+
                 # Gradient of hidden layer below
-                gradh = np.dot(self.w[k].T,grad_z)
+                gradh = np.dot(self.w[k-1].T,grad_z)
+        
                 # Gradient of hidden layer below before activation
-                grad_z = dReLU(self.z[k],gradh)
-                #else: grad_z = gradh    #self.z[k] #dReLU(self.z[k],1)
+                grad_z = dReLU(z[k-1],gradh)
 
-            gradw.reverse()
-            gradb.reverse()
-            
-            #Update parameters
-            for m in range(num_layers):
-                self.w[m] -= learning_rate*gradw[m]
-                self.b[m] -= learning_rate*gradb[m]
-            
-
-
+                #Update parameters
+                self.w[k-1] -= learning_rate*gradw
+                self.b[k-1] -= learning_rate*gradb
+       
 def plot(epochs, valid_accs, test_accs):
     plt.xlabel('Epoch')
     plt.ylabel('Accuracy')
@@ -226,7 +208,7 @@ def main():
     parser.add_argument('model',
                         choices=['perceptron', 'logistic_regression', 'mlp'],
                         help="Which model should the script run?")
-    parser.add_argument('-epochs', default=20, type=int,
+    parser.add_argument('-epochs', default=5, type=int,
                         help="""Number of epochs to train for. You should not
                         need to change this value for your plots.""")
     parser.add_argument('-hidden_size', type=int, default=200,
