@@ -23,6 +23,12 @@ def ReLU(x):
 def dReLU(x, grad_x):
     return grad_x * (x > 0)
 
+def Softmax_normalized(x):
+    return np.exp(x - np.max(x,axis=0)) / np.sum(np.exp(x - np.max(x,axis=0)))
+
+def Softmax(x):
+    return np.exp(x) / np.sum(np.exp(x))
+
 class LinearModel(object):
     def __init__(self, n_classes, n_features, **kwargs):
         self.W = np.zeros((n_classes, n_features))
@@ -52,25 +58,19 @@ class LinearModel(object):
 
 
 class Perceptron(LinearModel):
-    def update_weight(self, x_i, y_i, **kwargs):
+    def update_weight(self, x_i, y_i, learning_rate=0.01, **kwargs):
         """
         x_i (n_features): a single training example
         y_i (scalar): the gold label for that example
         other arguments are ignored
         """
         # Q1.1a
-
-        # Is learning rate necessary? Does not make big diff
-        # Bias was already added to inputs -> See loading of data
-        # Results not very good
         
         y_hat=self.predict(x_i)
         if y_hat != y_i:
-            self.W[y_i, :] +=  x_i
-            self.W[y_hat, :] -=   x_i
+            self.W[y_i, :] +=  learning_rate*x_i
+            self.W[y_hat, :] -=   learning_rate*x_i
         
-
-
 
 class LogisticRegression(LinearModel):
 
@@ -83,14 +83,10 @@ class LogisticRegression(LinearModel):
         """
         # Q1.1b
 
-        # Better results
-
         # Defining the probabilities for each class
-        exps=np.exp(np.dot(self.W, x_i))
-        Z=np.sum(exps)
-        probs=exps/Z
+        probs=Softmax_normalized(np.dot(self.W, x_i))
         
-        # Creating e_y
+        # Creating one hot array
         ey=np.zeros_like(probs)
         ey[y_i]=1
         
@@ -103,43 +99,50 @@ class LogisticRegression(LinearModel):
 
 
 class MLP(object):
-    # Q3.2b. This MLP skeleton code allows the MLP to be used in place of the
+    # Q1.2b. This MLP skeleton code allows the MLP to be used in place of the
     # linear models with no changes to the training loop or evaluation code
     # in main().
-    def __init__(self, n_classes, n_features, hidden_size,layers=1):
+    def __init__(self, n_classes, n_features, hidden_size, layers=1):
         # Initialize an MLP with a single hidden layer.
 
-        # Initialize weights matrices
+        # Initializing weights matrices
         w1 = np.random.normal(0.1,0.1,[hidden_size,n_features])
         w2 = np.random.normal(0.1,0.1,[n_classes,hidden_size])
         self.w=[w1,w2]  # still need to initialize values
         
-        # Initialize biases vectors
+        # Initializing biases vectors
         b1 = np.zeros(hidden_size)
         b2 = np.zeros(n_classes)
-        self.b=[b1,b2] #check later
+        self.b=[b1,b2] 
 
-        # Initializing zs ( necessary? )
-        self.h=[np.zeros(n_features), np.zeros(hidden_size),np.zeros(n_classes)] #check later
+        # Initializing vector of input, hiddens and outputs
+        self.vec=[np.zeros(n_features), np.zeros(hidden_size),np.zeros(n_classes)] 
     
     
     def predict(self, X):
         # Compute the forward pass of the network. At prediction time, there is
         # no need to save the values of hidden nodes, whereas this is required
         # at training time.
-        pred_tot=np.zeros(X.shape[0])
-        num_layers=len(self.w)
+
+        # Initializing local variables
+        pred_tot = np.zeros(X.shape[0]) # Predictions array
+        num_layers = len(self.w)        # Number of layers - 1
+
+        # For cycle for each sample
         for n in np.arange(X.shape[0]):
-            x_i=X[n]
-            x_i = (x_i-np.mean(x_i))/np.std(x_i)
-            self.h[0] = x_i
+            
+            x = X[n]
+            # x_i = (x_i-np.mean(x_i))/np.std(x_i)
+
             for j in range(num_layers):
-                lin = (self.w[j]).dot(self.h[j]) + self.b[j]    # Linear part
-                if j < num_layers - 1: self.h[j+1] = ReLU(lin)  # ReLU activation
-                else: self.h[j+1] = lin
-            self.h[-1]=np.exp(self.h[-1])/np.sum(np.exp(self.h[-1]))
-            pred = np.argmax(self.h[-1])
-            pred_tot[n]=pred
+                lin = (self.w[j]).dot(x) + self.b[j]    # Linear part
+                if j < num_layers - 1: x = ReLU(lin)    # ReLU activation
+                else: x = Softmax_normalized(lin)       # Output has softmax activation
+            
+            # Prediction consists on the class that maximizes the probability function softmax
+            pred = np.argmax(x)
+            pred_tot[n] = pred
+
         return pred_tot
 
 
@@ -156,36 +159,43 @@ class MLP(object):
 
     def train_epoch(self, X, y, learning_rate=0.001):
      
-     #from sklearn.model_selection import train_test_split
-     #X_new = (X-np.mean(X))/np.std(X)
-     #X_train, _, y_train, _ = train_test_split(X, y, test_size=0.000001, random_state=33)
+        #from sklearn.model_selection import train_test_split
+        #X_train, _, y_train, _ = train_test_split(X, y, test_size=0.000001, random_state=33)
     
         num_layers=len(self.w)
         for x_i,y_i in zip(X,y):
-            x_i = (x_i-np.mean(x_i))/np.std(x_i)
+            # x_i = (x_i-np.mean(x_i))/np.std(x_i)
             # Forward
-            self.h[0] = x_i
+            self.vec[0] = x_i
             z=[]
             z.append(x_i)
             for j in range(num_layers):
-                lin = (self.w[j]).dot(self.h[j]) + self.b[j]    # Linear part
+                lin = (self.w[j]).dot(self.vec[j]) + self.b[j]    # Linear part
                 z.append(lin)
-                if j < num_layers - 1: self.h[j+1] = ReLU(lin)  # ReLU activation
-                else: self.h[j+1] = np.exp(lin)/np.sum(np.exp(lin)) # output activation(softmax)
-                
+                if j < num_layers - 1: self.vec[j+1] = ReLU(lin)  # ReLU activation
+                else: self.vec[j+1] = Softmax_normalized(lin)
             
-            ey = np.zeros_like(self.h[-1])
-            ey[y_i] = 1 # One hot
-            grad_z=self.h[-1]-ey
-            #grad_z=probs-ey
-            for k in range(len(self.h)-1, 0, -1):
-                gradw = np.outer(grad_z,self.h[k-1])
+            # Backward
+            
+            # One hot array
+            ey = np.zeros_like(self.vec[-1])
+            ey[y_i] = 1   
 
-                gradb = grad_z[:]  #python is sometimes a moron and takes a=b as b=a, as in afterwards changing b changes a and vice versa, the [:] makes sure this doesnt happen.
+            # Grad_z wrt to last z
+            grad_z = self.vec[-1] - ey
+
+            for k in range(len(self.vec)-1, 0, -1):
+                
+                # Gradients of weights and biases
+                # gradw = np.outer(grad_z,self.vec[k-1])
+                gradw = np.einsum('i,j->ij', grad_z, self.vec[k-1]) # Outer product
+                gradb = grad_z[:]  # [:] avoids bad assignment
 
                 # Gradient of hidden layer below
-                gradh = np.dot(self.w[k-1].T,grad_z)
-        
+                # gradh1 = np.dot(self.w[k-1].T,grad_z)
+                gradh = np.einsum('ki,k->i', self.w[k-1], grad_z)    # Inner product of transposed matrix with array
+                # print(gradh1-gradh) # Are different for very different values
+                
                 # Gradient of hidden layer below before activation
                 grad_z = dReLU(z[k-1],gradh)
 
@@ -208,7 +218,7 @@ def main():
     parser.add_argument('model',
                         choices=['perceptron', 'logistic_regression', 'mlp'],
                         help="Which model should the script run?")
-    parser.add_argument('-epochs', default=5, type=int,
+    parser.add_argument('-epochs', default=20, type=int,
                         help="""Number of epochs to train for. You should not
                         need to change this value for your plots.""")
     parser.add_argument('-hidden_size', type=int, default=200,
