@@ -68,10 +68,21 @@ class FeedforwardNetwork(nn.Module):
         includes modules for several activation functions and dropout as well.
         """
         super().__init__()
-        self.layer = nn.Linear(n_features, n_classes)
-        self.activation = nn.activation_type()
-        # Implement me!
+        self.first_layer = nn.Linear(n_features, hidden_size)
+        self.hidden_layer = nn.Linear(hidden_size, hidden_size)
+        self.output_layer = nn.Linear(hidden_size, n_classes)
 
+        if activation_type == "relu": self.activation = nn.ReLU()
+        else: self.activation = nn.Tanh()
+
+        self.order = nn.Sequential(self.first_layer,self.activation)
+        for _ in range(layers):
+            self.order.append(self.hidden_layer)
+            self.order.append(self.activation)
+        self.order.append(self.output_layer)
+        
+        self.drop = dropout
+        
     def forward(self, x, **kwargs):
         """
         x (batch_size x n_features): a batch of training examples
@@ -80,10 +91,9 @@ class FeedforwardNetwork(nn.Module):
         the output logits from x. This will include using various hidden
         layers, pointwise nonlinear functions, and dropout.
         """
-        m=nn.Dropout(p=0.3)
-        x=m(x)
-        x=self.layer(x)
-        x=self.activation(x)
+        m = nn.Dropout(p=self.drop)
+        x = m(x)
+        x = self.order(x)
         return x
 
 
