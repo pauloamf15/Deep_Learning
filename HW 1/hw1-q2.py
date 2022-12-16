@@ -26,9 +26,11 @@ class LogisticRegression(nn.Module):
         pytorch to make weights and biases, have a look at
         https://pytorch.org/docs/stable/nn.html
         """
-        super().__init__()
         # In a pytorch module, the declarations of layers needs to come after
         # the super __init__ line, otherwise the magic doesn't work.
+        super().__init__()
+        self.beta = nn.Linear(n_features,n_classes)
+
 
     def forward(self, x, **kwargs):
         """
@@ -44,7 +46,8 @@ class LogisticRegression(nn.Module):
         forward pass -- this is enough for it to figure out how to do the
         backward pass.
         """
-        raise NotImplementedError
+        return self.beta(x)
+        
 
 
 # Q2.2
@@ -65,6 +68,8 @@ class FeedforwardNetwork(nn.Module):
         includes modules for several activation functions and dropout as well.
         """
         super().__init__()
+        self.layer = nn.Linear(n_features, n_classes)
+        self.activation = nn.Sigmoid()
         # Implement me!
 
     def forward(self, x, **kwargs):
@@ -96,7 +101,14 @@ def train_batch(X, y, model, optimizer, criterion, **kwargs):
     This function should return the loss (tip: call loss.item()) to get the
     loss as a numerical value that is not part of the computation graph.
     """
-    raise NotImplementedError
+ 
+    optimizer.zero_grad()    # reset the grad value
+    y2 = model(X)            # predicted scores
+    loss = criterion(y2,y)   # needs to be (pred_scores,gold labels), y2 has an extra dimension due to tracking of grad
+    loss.backward()          # calculates the grads
+    optimizer.step()         # updates weight 
+    return loss.item()       # only want the value, giving everything occupies too much memory
+    
 
 
 def predict(model, X):
