@@ -76,7 +76,7 @@ class FeedforwardNetwork(nn.Module):
         else: self.activation = nn.Tanh()
 
         self.order = nn.Sequential(self.first_layer,self.activation)
-        for _ in range(layers):
+        for _ in range(1,layers):
             self.order.append(self.hidden_layer)
             self.order.append(self.activation)
         self.order.append(self.output_layer)
@@ -161,7 +161,7 @@ def main():
     parser.add_argument('-epochs', default=20, type=int,
                         help="""Number of epochs to train for. You should not
                         need to change this value for your plots.""")
-    parser.add_argument('-batch_size', default=1, type=int,
+    parser.add_argument('-batch_size', default=16, type=int,
                         help="Size of training batch.")
     parser.add_argument('-learning_rate', type=float, default=0.01)
     parser.add_argument('-l2_decay', type=float, default=0)
