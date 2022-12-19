@@ -68,18 +68,20 @@ class FeedforwardNetwork(nn.Module):
         includes modules for several activation functions and dropout as well.
         """
         super().__init__()
+
         self.first_layer = nn.Linear(n_features, hidden_size)
-        self.hidden_layer = nn.Linear(hidden_size, hidden_size)
+        self.hidden_layers = nn.ModuleList([nn.Linear(hidden_size, hidden_size) for i in range(layers-1)]) #creates a list which holds modules, letting us automatically create different nn.Linears for the hidden layers.
+
         self.output_layer = nn.Linear(hidden_size, n_classes)
 
         if activation_type == "relu": self.activation = nn.ReLU()
         else: self.activation = nn.Tanh()
-
-        self.order = nn.Sequential(self.first_layer,self.activation)
-        for _ in range(1,layers):
-            self.order.append(self.hidden_layer)
+        
+        self.order = nn.Sequential(self.first_layer,self.activation)   # first hidden layer
+        for k in range(layers-1):                                      # if layer>1 this will add the remaining hidden layers
+            self.order.append(self.hidden_layers[k])
             self.order.append(self.activation)
-        self.order.append(self.output_layer)
+        self.order.append(self.output_layer)                           # output 
         
         self.drop = dropout
         
@@ -93,7 +95,7 @@ class FeedforwardNetwork(nn.Module):
         """
         m = nn.Dropout(p=self.drop)
         x = m(x)
-        x = self.order(x)
+        x = self.order(x)                             # passes the inputs through all the layers in the same order as in self.order
         return x
 
 
