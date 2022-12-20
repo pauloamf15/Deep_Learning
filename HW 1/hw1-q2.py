@@ -76,14 +76,15 @@ class FeedforwardNetwork(nn.Module):
 
         if activation_type == "relu": self.activation = nn.ReLU()
         else: self.activation = nn.Tanh()
-        
-        self.order = nn.Sequential(self.first_layer,self.activation)   # first hidden layer
-        for k in range(layers-1):                                      # if layer>1 this will add the remaining hidden layers
+        drop=nn.Dropout(p=dropout)
+        self.order = nn.Sequential(self.first_layer,self.activation,drop)   # first hidden layer
+        for k in range(layers-1):                                           # if layer>1 this will add the remaining hidden layers
             self.order.append(self.hidden_layers[k])
             self.order.append(self.activation)
-        self.order.append(self.output_layer)                           # output 
+            self.order.append(drop)
+        self.order.append(self.output_layer)                                # output 
         
-        self.drop = dropout
+        
         
     def forward(self, x, **kwargs):
         """
@@ -93,8 +94,6 @@ class FeedforwardNetwork(nn.Module):
         the output logits from x. This will include using various hidden
         layers, pointwise nonlinear functions, and dropout.
         """
-        m = nn.Dropout(p=self.drop)
-        x = m(x)
         x = self.order(x)                             # passes the inputs through all the layers in the same order as in self.order
         return x
 
@@ -163,7 +162,7 @@ def main():
     parser.add_argument('-epochs', default=20, type=int,
                         help="""Number of epochs to train for. You should not
                         need to change this value for your plots.""")
-    parser.add_argument('-batch_size', default=16, type=int,
+    parser.add_argument('-batch_size', default=1, type=int,
                         help="Size of training batch.")
     parser.add_argument('-learning_rate', type=float, default=0.01)
     parser.add_argument('-l2_decay', type=float, default=0)
