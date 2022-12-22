@@ -58,7 +58,7 @@ class LinearModel(object):
 
 
 class Perceptron(LinearModel):
-    def update_weight(self, x_i, y_i, learning_rate=0.01, **kwargs):
+    def update_weight(self, x_i, y_i, learning_rate=0.001, **kwargs):
         """
         x_i (n_features): a single training example
         y_i (scalar): the gold label for that example
@@ -132,7 +132,6 @@ class MLP(object):
         for n in np.arange(X.shape[0]):
             
             x = X[n]
-            # x_i = (x_i-np.mean(x_i))/np.std(x_i)
 
             for j in range(num_layers):
                 lin = (self.w[j]).dot(x) + self.b[j]    # Linear part
@@ -158,13 +157,10 @@ class MLP(object):
         return n_correct / n_possible
 
     def train_epoch(self, X, y, learning_rate=0.001):
-     
-        #from sklearn.model_selection import train_test_split
-        #X_train, _, y_train, _ = train_test_split(X, y, test_size=0.000001, random_state=33)
     
         num_layers=len(self.w)
         for x_i,y_i in zip(X,y):
-            # x_i = (x_i-np.mean(x_i))/np.std(x_i)
+
             # Forward
             self.vec[0] = x_i
             z=[]
@@ -187,14 +183,11 @@ class MLP(object):
             for k in range(len(self.vec)-1, 0, -1):
                 
                 # Gradients of weights and biases
-                # gradw = np.outer(grad_z,self.vec[k-1])
                 gradw = np.einsum('i,j->ij', grad_z, self.vec[k-1]) # Outer product
                 gradb = grad_z[:]  # [:] avoids bad assignment
 
                 # Gradient of hidden layer below
-                # gradh1 = np.dot(self.w[k-1].T,grad_z)
-                gradh = np.einsum('ki,k->i', self.w[k-1], grad_z)    # Inner product of transposed matrix with array
-                # print(gradh1-gradh) # Are different for very different values
+                gradh = np.einsum('ki,k->i', self.w[k-1], grad_z)   # Inner product of transposed matrix with array
                 
                 # Gradient of hidden layer below before activation
                 grad_z = dReLU(z[k-1],gradh)
@@ -244,7 +237,7 @@ def main():
     n_feats = train_X.shape[1]
     
 
-    # initialize the model
+    # Initializing the model
     if opt.model == 'perceptron':
         model = Perceptron(n_classes, n_feats)
     elif opt.model == 'logistic_regression':
@@ -267,8 +260,10 @@ def main():
         valid_accs.append(model.evaluate(dev_X, dev_y))
         test_accs.append(model.evaluate(test_X, test_y))
 
-    # plot
+    # Plot
     plot(epochs, valid_accs, test_accs)
+    # Last accuracies
+    print(valid_accs[-1], test_accs[-1])
 
 
 if __name__ == '__main__':
