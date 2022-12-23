@@ -93,7 +93,7 @@ class FeedforwardNetwork(nn.Module):
         This method needs to perform all the computation needed to compute
         the output logits from x. This will include using various hidden
         layers, pointwise nonlinear functions, and dropout.
-        """
+        """`
         x = self.order(x)                             # passes the inputs through all the layers in the same order as in self.order
         return x
 
