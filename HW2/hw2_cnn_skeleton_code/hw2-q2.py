@@ -26,6 +26,15 @@ class CNN(nn.Module):
         https://pytorch.org/docs/stable/nn.html
         """
         super(CNN, self).__init__()
+        self.conv1 = nn.Conv2d(1, 8, kernel_size=5, stride=1, padding=2) # padding=2 should also work
+        self.conv2 = nn.Conv2d(8, 16, kernel_size=3, stride=1, padding=0)
+        self.conv2_drop = nn.Dropout(p=dropout_prob)
+        self.fc1 = nn.Linear(576, 600)
+        self.fc2 = nn.Linear(600, 120)
+        self.fc3 = nn.Linear(120, 10)
+        self.mp=nn.MaxPool2d(2, stride=2, padding=0)
+        self.r=nn.ReLU()
+        self.lg=nn.LogSoftmax(dim=0)
         
         # Implement me!
         
@@ -45,7 +54,35 @@ class CNN(nn.Module):
         forward pass -- this is enough for it to figure out how to do the
         backward pass.
         """
-        raise NotImplementedError
+        # print(x.shape)
+        x=x.view(-1,1,28,28)
+        # Batch size = 8, images 28x28 =>
+        #     x.shape = [8, 1, 28, 28]
+        x=self.r(self.conv1(x))
+        # Convolution with 5x5 filter full padding and 10 channels =>
+        #     x.shape = [8, 8, 28, 28] since 28 = 28 - 5 + 2*2 + 1
+        x=self.mp(x)
+        # Max pooling with stride of 2 =>
+        #     x.shape = [8, 8, 14, 14]
+        x=self.r(self.conv2(x))
+        # Convolution with 3x3 filter without padding and 16 channels =>
+        #     x.shape = [8, 16, 12, 12] since 12 = 14 - 3 + 1
+        x=self.mp(x)
+        # Max pooling with stride of 2 =>
+        #     x.shape = [8, 16, 6, 6]
+        x = x.view(-1, 576)
+        # Reshape =>
+        #     x.shape = [8, 576]
+        x=self.r(self.fc1(x))
+        x=self.r(self.fc2(self.conv2_drop(x)))
+        x=self.lg(self.fc3(x))
+
+
+
+
+        # x = F.relu(F.max_pool2d(self.conv1(x), 2, stride=2))
+        # raise NotImplementedError
+        return x
 
 def train_batch(X, y, model, optimizer, criterion, **kwargs):
     """
@@ -65,7 +102,13 @@ def train_batch(X, y, model, optimizer, criterion, **kwargs):
     This function should return the loss (tip: call loss.item()) to get the
     loss as a numerical value that is not part of the computation graph.
     """
-    raise NotImplementedError
+    # raise NotImplementedError
+    optimizer.zero_grad()    # reset the grad value
+    y2 = model(X)            # predicted scores
+    loss = criterion(y2,y)   # needs to be (pred_scores,gold labels), y2 has an extra dimension due to tracking of grad
+    loss.backward()          # calculates the grads
+    optimizer.step()         # updates weight 
+    return loss.item()       # only want the value, giving everything occupies too much memory
 
 def predict(model, X):
     """X (n_examples x n_features)"""
@@ -133,9 +176,9 @@ def main():
     parser.add_argument('-learning_rate', type=float, default=0.01,
                         help="""Learning rate for parameter updates""")
     parser.add_argument('-l2_decay', type=float, default=0)
-    parser.add_argument('-dropout', type=float, default=0.8)
+    parser.add_argument('-dropout', type=float, default=0.3)
     parser.add_argument('-optimizer',
-                        choices=['sgd', 'adam'], default='sgd')
+                        choices=['sgd', 'adam'], default='adam')
     
     opt = parser.parse_args()
 
