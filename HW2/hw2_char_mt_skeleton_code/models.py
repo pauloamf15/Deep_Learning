@@ -48,10 +48,10 @@ class Attention(nn.Module):
         # - Use torch.masked_fill to do the masking of the padding tokens
         #############################################
         z = self.linear_in(query)
-        attn_scores = torch.bmm(z, encoder_outputs.permute(0,2,1))  #(batch_size, 1, max_src_len)
+        attn_scores = torch.bmm(z, encoder_outputs.permute(0,2,1))  
         attn_scores.masked_fill_(src_seq_mask.unsqueeze(1), float("-inf"))
         alignment = torch.softmax(attn_scores, dim=2) 
-        c = torch.bmm(alignment, encoder_outputs) #(batch_size, 1, hidden_dim)
+        c = torch.bmm(alignment, encoder_outputs) 
         a_0 = torch.cat([c, query], dim=2)
         attn_out = torch.tanh(self.linear_out(a_0))
 
