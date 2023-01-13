@@ -49,8 +49,7 @@ class Attention(nn.Module):
         #############################################
         z = self.linear_in(query)
         attn_scores = torch.bmm(z, encoder_outputs.permute(0,2,1))  #(batch_size, 1, max_src_len)
-        for i in range(attn_scores.shape[1]):
-            attn_scores[:,i,:]=torch.masked_fill(attn_scores[:,i,:], src_seq_mask, float("-inf"))
+        attn_scores.masked_fill_(src_seq_mask.unsqueeze(1), float("-inf"))
         alignment = torch.softmax(attn_scores, dim=2) 
         c = torch.bmm(alignment, encoder_outputs) #(batch_size, 1, hidden_dim)
         a_0 = torch.cat([c, query], dim=2)
@@ -209,9 +208,13 @@ class Decoder(nn.Module):
         #         src_lengths,
         #     )
         #############################################
-        emb = self.embedding(tgt)
+        if tgt.shape[1]>1:
+            tgt2=tgt[:,:-1]
+        else:
+            tgt2=tgt
+        emb = self.embedding(tgt2)
         emb = self.dropout(emb)
-        output, _ = self.lstm(emb, dec_state)
+        output, dec_state = self.lstm(emb, dec_state)
         if self.attn is not None:
            output = self.attn(
                output,
@@ -219,7 +222,6 @@ class Decoder(nn.Module):
                src_lengths,
            )
         output = self.dropout(output)
-        print(output.shape)
         #############################################
         # END OF YOUR CODE
         #############################################

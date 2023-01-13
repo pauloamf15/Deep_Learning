@@ -65,7 +65,7 @@ def train(data, model, lr, n_epochs, padding_idx):
             src_lengths = src_lengths.to(device)
 
             optimizer.zero_grad()
-            outputs, _ = model(src, src_lengths, tgt[:,:-1])
+            outputs, _ = model(src, src_lengths, tgt)
             loss = criterion(
                 outputs.reshape(-1, outputs.shape[-1]), tgt[:, 1:].reshape(-1)
             )
@@ -110,7 +110,7 @@ def test(model, data_iter, data_type, examples_idx=None):
 
             encoder_outputs, final_enc_state = model.encoder(src, src_lengths)
             dec_state = final_enc_state
-
+            
             if dec_state[0].shape[0] == 2:
                 dec_state = reshape_state(dec_state)
 
